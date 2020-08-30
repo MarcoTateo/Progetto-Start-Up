@@ -1,0 +1,439 @@
+---
+title: "Start-Up Project"
+author: "Marco Tateo"
+date: "01/09/2020"
+output: html_document
+runtime: shiny
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r read, include=FALSE}
+
+library(dbplyr)
+library(dplyr)
+library(tidyverse)
+library(tidytext)
+library(ggplot2)
+library(plotly)
+library(shiny)
+library(gganimate)
+library(gridExtra)
+
+
+```
+
+```{r, include=FALSE}
+
+data = read.csv("investments_VC.csv", header = TRUE)
+
+
+```
+
+```{r , include=FALSE}
+
+dataset <- data %>%
+  select(name, 4:18)
+
+```
+
+<br>
+<br>
+
+![](Simage.jpg)
+
+<br>
+<br>
+
+Ci sono più definizioni per definire una start-Up, o impresa emergente: 
+
+1) è un’organizzazione temporanea, o una società   di capitali, in cerca di un business model replicabile e scalabile.
+
+2) è un’istituzione umana concepita per offrire nuovi prodotti o servizi in condizioni di estrema incertezza.
+
+3) è una società concepita per crescere velocemente.
+
+Ci sono quattro caratteristiche necessarie da comprendere per capire davvero cos’è  una start-Up:
+
+ 1) scalabilità 
+ 
+ 2) replicabilità  del modello di business 
+ 
+ 3) innovazione intrinseca (di processo o di prodotto) 
+ 
+ 4) temporaneità
+
+In caso di insuccesso, non sono particolarmente rischiose data l'esigua quantità  di capitali investiti.
+
+
+```{r, include = FALSE}
+
+paesi <- dataset %>%
+  filter(country_code != "") %>%
+  group_by (country_code) %>%
+  count (country_code, sort = TRUE)
+
+top_paesi <- head(paesi, 10)
+
+paesi1 <- dataset %>%
+  inner_join(top_paesi) 
+
+
+
+```
+<br>
+<br>
+
+Analizzando il nostro dataset in termini di Paesi con più  start-Up, possiamo notare subito il fatto che gli USA sono decisamente lo stato che ne comprende di più . Esattamente il 65.20% rispetto ai totali 115 paesi e il 75.06% rispetto ai 10 Paesi con più società di questo tipo.
+
+<br>
+
+```{r, echo = FALSE}
+
+ggplot(paesi1) +
+  geom_bar (mapping = aes(x = country_code), fill = "#1996FF")+
+  labs(title = "I 10 Paesi con maggior numero di imprese star-Up alla fine del 2014", x = "Paesi", y = "Numero di Start-Up")
+
+```
+<br>
+<br>
+
+Per quanto riguarda i settori più  diffusi, mercati come SOFTWARE, BIOTECNOLOGIE, MOBILE e E-COMMERCE ricoprono i primi posti. Questo perchè   settori come quello tecnologico o informatico in questi ultimi anni hanno spronato tante persone ad aprire delle start-Up puntando sul settore terziario.
+
+<br>
+
+```{r , include=FALSE}
+
+market <- dataset %>%
+  filter(market != "") %>%
+  group_by (market) %>%
+  count (market, sort = TRUE)
+ 
+top_market <- head(market, 10)
+
+
+market_data <- dataset %>%
+  inner_join(top_market)
+
+```
+
+```{r, echo = FALSE}
+  
+ggplot(market_data) +
+  geom_bar (mapping = aes (x = market, fill = market))+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(title = "I 10 settori merceologici più scelti dalle imprese Start-Up", x = "Settore merceologico", y = "Numero di Start-Up")
+
+
+```
+<br>
+<br>
+
+Queste società   possono avere 3 situazioni:
+
+ - operating
+ 
+ - aquired
+ 
+ - closed
+ 
+Come possiamo vedere dal grafico che segue la quasi totalità delle start-Up, per il periodo preso in considerazione in premessa, sono tutt'ora opeative.
+
+<br>
+
+```{r, include = FALSE}
+
+dataset1 <- dataset %>%
+  filter(status != "")
+
+status_data <- dataset1 %>%
+  group_by (status) %>%
+  summarise(n = n(), 
+            percentage = n/nrow(dataset1))
+
+
+
+```
+
+
+
+```{r, echo = FALSE}
+
+ggplot(data = status_data, aes("", y = percentage, fill = status))+
+  geom_col(color = "black") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(percentage*100, digit = 2), "%")),
+            position = position_stack(vjust = 0.5)) +
+  theme(panel.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust = 0.5, size = 18)) +
+  ggtitle ("Periodo di vita delle start-Up")
+
+
+
+
+
+```
+
+<br>
+<br>
+
+Il futuro di una start-Up si basa principalmente sui finanziamenti  e autofinanziamenti.
+I finanziamenti provengono dai soci o dai finanziatori terzi.
+Consideriamo ora i maggiori finanziamenti e analizziamo in che settore/Paese sono più consistenti.
+
+<br>
+
+```{r , include = FALSE}
+
+funding <- dataset %>%
+  filter(funding_total_usd != "-", funding_total_usd != "" , market != "") %>%
+  select(market, funding_total_usd)%>%
+  arrange(desc(funding_total_usd))
+
+top_funding <- head (funding,200)
+
+market_byF <- top_funding %>%
+  group_by(market)  %>%
+  count(market, sort = TRUE)
+
+
+top_market_byF <- head (market_byF,10)
+
+n <- top_market_byF %>%
+  pull(n)
+
+marketF <-  top_market_byF %>%
+  pull(market)
+
+```
+
+
+```{r, echo = FALSE}
+#ho usato qui la libreria plotly in quanto migliore esteticamente e ho ritenuto che in questo caso #rappresenta meglio il mio caso di studio
+
+plot_ly(type='pie',title = "Percentale dei settori con maggiori finanziamenti" , labels=marketF, values=n, 
+               textinfo='label+percent', insidetextorientation='radial')
+
+```
+
+```{r, include = FALSE}
+fundingC <- dataset %>%
+  filter(funding_total_usd != "-", funding_total_usd != "" , country_code != "") %>%
+  select(country_code, funding_total_usd)%>%
+  arrange(desc(funding_total_usd))
+
+top_fundingC <- head (fundingC,200)
+
+market_byFC <- top_fundingC %>%
+  group_by(country_code)  %>%
+  count (country_code, sort = TRUE)
+
+
+top_market_byFC <- head (market_byFC,10)
+
+nC <- top_market_byFC %>%
+  pull(n)
+
+marketFC <-  top_market_byFC %>%
+  pull(country_code)
+
+```
+
+```{r, echo=FALSE}
+
+plot_ly(type='pie',title = "Percentuale dei Paesi dove sono presenti i maggiori finanziamenti in start-Up", labels=marketFC, values=nC, 
+               textinfo='label+percent', insidetextorientation='radial')
+
+
+```
+
+<br>
+<br>
+
+```{r , include= FALSE}
+paesi <- dataset %>%
+  filter(country_code != "") %>%
+  group_by (country_code) %>%
+  count (country_code, sort = TRUE) 
+
+top_paesi <- head(paesi, 10)
+
+
+```
+
+Analisi del numero delle imprese start-Up nell'arco temporale dal 1902 al 2014.
+
+<br>
+```{r , echo = FALSE}
+
+ui = fluidPage(
+  
+  titlePanel("Analisi per Paese e anno del numero di start-Up fondate"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      
+      sliderInput("year", "Anno",
+                  min = 1902,
+                  max = 2014,
+                  step = 2,
+                  value = 1950),
+      
+      #country input
+      selectInput("Country", "Paese", 
+                  choices = list("USA", "GBR", "CAN", "CHN", "DEU", "FRA", "IND", "ISR", "ESP", "RUS", "ALL"), 
+                  selected = "ALL"),
+      
+  ),
+      
+    # scatter plot output
+    mainPanel(
+      plotOutput("barplot")
+    )
+  )
+)
+
+
+
+server <- function(input, output) {
+  
+  output$barplot <- renderPlot({
+    
+    if(input$Country == "ALL"){
+      dataplot = dataset %>%
+        inner_join(top_paesi) %>%
+        filter(founded_year != "NA", founded_year >= input$year)
+    } else {
+    
+      dataplot = filter(dataset, country_code == input$Country, founded_year != "NA", founded_year >= input$year)
+  }
+    
+
+    ggplot(dataplot,  colour = "country_code") +
+      geom_bar(mapping = aes(x = founded_year), fill = "#1996FF") +
+      labs (x = "Anno di fodazione", y = "Numero di start-Up")
+      
+      
+    })
+}
+
+shinyApp(ui = ui, server = server)
+
+  
+```
+
+<br>
+<br>
+<br>
+
+Di seguito viene analizato il numero di "nascite" di start-Up suddiviso per periodi trimestrali.
+
+
+```{r, include = FALSE}
+
+trim1 <- dataset %>%
+  filter(founded_quarter != "NA" ) %>%
+  separate (founded_quarter, into = c("founded_year", "quarter"), sep ="-")%>%
+  select(name, market, quarter) %>%
+  filter(quarter != "NA") 
+  
+trimestri = c("Primo trim", "Secondo trim" , "Terzo trim" , "Quarto trim")
+
+trim2 <- trim1 %>%
+  count(quarter)
+
+View(data)
+
+```
+
+```{r, echo = FALSE}
+
+data_trim <- trim2 %>%
+  mutate(Trimestre = trimestri, N._di_startUp = n) %>%
+  select(Trimestre, N._di_startUp)
+
+grid.table(data_trim)
+
+```
+
+Come si può vedere dalla rappresentazione sottostante, ricevere dei finanziamenti subito dopo la fondazione della propria attività   non è   molte volte usuale.
+
+
+```{r, echo = FALSE}
+
+ui = fluidPage(
+  
+  titlePanel("Analisi dei finanziamenti in start-Up suddiviso in settore"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      
+      numericInput("year", "Periodo trascorso tra l'anno di fondazone e il primo finanziamento",
+                  value = 20),
+      
+      numericInput("num", "Numero di Start-Up da mostrare", 
+                        value = 10), 
+    ),
+      
+    
+    # scatter plot output
+    mainPanel(
+      tableOutput("tbl")
+    )
+  )
+)
+
+
+
+server <- function(input, output) {
+  
+  output$tbl <- renderTable({
+    
+      data_diff1 = dataset %>%
+        filter(first_funding_at != "NA" & founded_year != "NA") %>%
+        separate(first_funding_at, into=c("first_fund_year", "month", "day"), sep ="-") %>%
+        select("name", "market", "country_code", "founded_year", "first_fund_year")
+      
+      data_diff1$first_fund_year = as.numeric(data_diff1$first_fund_year)
+      
+      data_diff <- data_diff1 %>%
+        mutate (diff_year = first_fund_year - founded_year) %>%
+        arrange(desc(diff_year))
+      
+       data_diff_table <- data_diff %>%
+         filter(diff_year >= input$year)
+    
+
+    data_diff_market <- data_diff_table %>%
+      filter(market != "") %>%
+      group_by(market) %>%
+      summarise (n = n()) %>%
+      arrange (desc(n)) %>%
+      head(input$num)
+      
+    })
+}
+
+shinyApp(ui = ui, server = server)
+
+
+```
+
+
+<br>
+<br>
+
+CONCLUSIONE:
+
+Dalle analisi sopraesposte si evidenzia come negli Stati Uniti esiste una maggiore propensione all'investimento in imprese start-Up. Questo è dovuto sicuramente alla maggiore disponibilità finanziaria del territorio e ad una politica incentivante dei governi. Questa, sommata all'esperienza delle start-Up presenti, alimenta la nascita di ulteriori start-Up.
+
+<br>
+<br>
